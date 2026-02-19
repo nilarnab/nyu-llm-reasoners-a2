@@ -1,3 +1,5 @@
+import os
+
 import torch
 
 VOCAB_SIZE = 10000
@@ -34,3 +36,8 @@ else:
 # TIME MEASRUEMENT
 WARMUP_COUNT_BEFORE_TIME = 5
 MEASURE_FOR_COUNT = 10
+
+
+
+MACHINE = os.getenv("MACHINE", "hpc")
+print("MACHINE", MACHINE)
