@@ -25,7 +25,8 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "student"
-module-root = ""
+module-root = "./"
+# module-root = ""
 
 [tool.uv]
 package = true
