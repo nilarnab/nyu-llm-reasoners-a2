@@ -11,6 +11,8 @@ from student.utils import data_loader, conditionally_torch_sync
 from student.defaults import *
 import torch
 import numpy as np
+import torch.cuda.nvtx as nvtx
+
 
 def get_random_data(batch_size, context_length, vocab_size=VOCAB_SIZE, device=DEVICE):
     input_data = torch.randint(
@@ -85,43 +87,44 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
     res = defaultdict(lambda: [])
 
     ## WARMUP PHASE
-    for it_id in range(it_start, time_measure_params['warmup_count']):
-        print("it_id", it_id)
-        current_lr = basic_optimizer.get_cosine_lr(
-            it=it_id,
-            max_learning_rate=max_learning_rate,
-            min_learning_rate=min_learning_rate,
-            warmup_iters=WARMUP_ITERS,
-            cosine_cycle_iters=ITERATIONS,
-        )
+    with nvtx.range("WARM_UP"):
+        for it_id in range(it_start, time_measure_params['warmup_count']):
+            print("it_id", it_id)
+            current_lr = basic_optimizer.get_cosine_lr(
+                it=it_id,
+                max_learning_rate=max_learning_rate,
+                min_learning_rate=min_learning_rate,
+                warmup_iters=WARMUP_ITERS,
+                cosine_cycle_iters=ITERATIONS,
+            )
 
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = current_lr
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = current_lr
 
-        # wandb.log({
-        #     "learning_rate": float(current_lr)
-        # }, step=it_id)
+            # wandb.log({
+            #     "learning_rate": float(current_lr)
+            # }, step=it_id)
 
-        # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
-        if generate_data_randomly:
-            input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
-                                                      device=device)
-        else:
-            input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            if generate_data_randomly:
+                input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
+                                                          device=device)
+            else:
+                input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
 
 
-        optimizer.zero_grad()
+            optimizer.zero_grad()
 
-        logits = model(input_tensor)
+            logits = model(input_tensor)
 
-        loss = basic_nn_utils.cross_entropy(logits, target_tensor)
+            loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
-        loss.backward()
-        basic_nn_utils.clip_gradient(
-            model.parameters(), max_norm=1.0
-        )
+            loss.backward()
+            basic_nn_utils.clip_gradient(
+                model.parameters(), max_norm=1.0
+            )
 
-        optimizer.step()
+            optimizer.step()
 
     for it_id in range(time_measure_params['measure_for_count']):
 
@@ -151,14 +154,18 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
         optimizer.zero_grad()
 
         forward_start_time = timeit.default_timer()
-        logits = model(input_tensor)
+        with nvtx.range("FORWARD_PASS"):
+            logits = model(input_tensor)
+
         conditionally_torch_sync(device)
         res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
 
         loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
         backward_start_time = timeit.default_timer()
-        loss.backward()
+        with nvtx.range("BACKWARD_PASS"):
+            loss.backward()
+
         conditionally_torch_sync(device)
         res['BACKWARD_PASS_TIME'].append(timeit.default_timer() - backward_start_time)
 
@@ -166,7 +173,8 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
             model.parameters(), max_norm=1.0
         )
 
-        optimizer.step()
+        with nvtx.range("OPTIMIZER_STEP"):
+            optimizer.step()
 
     return res
 
