@@ -66,6 +66,7 @@ def run_tests(size_key, context_size):
             d_ff=SWEEPS[size_key]['d_ff'],
             num_layers=SWEEPS[size_key]['num_layers'],
             num_heads=SWEEPS[size_key]['num_heads'],
+            context_length=int(context_size),
             time_measure_params=time_measure_params
         )
 
@@ -75,7 +76,7 @@ def run_tests(size_key, context_size):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_size', type=int, required=True)
+    parser.add_argument('--model_size', type=str, required=True)
     parser.add_argument('--context_size', type=int, required=True)
 
     args = parser.parse_args()

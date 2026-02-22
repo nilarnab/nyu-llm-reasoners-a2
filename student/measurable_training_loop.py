@@ -44,6 +44,9 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
                   generate_data_randomly=True,
                   train_data=None
                        ):
+    print("TRINING LOOP WITH:")
+    print("vocab size", vocab_size, "context length", context_length)
+
     if time_measure_params is None:
         time_measure_params = {
             "warmup_count": WARMUP_COUNT_BEFORE_TIME,
