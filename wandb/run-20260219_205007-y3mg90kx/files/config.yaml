@@ -1,0 +1,106 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            dbm1hhnyrnaty2r2osv0mkfduef81x8l:
+                codePath: student/benchmarking_script.py
+                codePathLocal: student/benchmarking_script.py
+                cpu_count: 6
+                cpu_count_logical: 12
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "27847135232"
+                        used: "1459785728"
+                email: nd3032@nyu.edu
+                executable: /scratch/nd3032/nyu-llm-reasoners-a2/.venv/bin/python3
+                git:
+                    commit: fe04ee70560b2551a83b86bd595194860d24d428
+                    remote: https://github.com/nilarnab/nyu-llm-reasoners-a2.git
+                gpu: NVIDIA A100-SXM4-40GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-SXM4-40GB
+                      uuid: GPU-a1717ab7-59d4-bfe3-67eb-30696f2b82be
+                host: b-19-50
+                memory:
+                    total: "89078554624"
+                os: Linux-5.14.0-570.62.1.el9_6.x86_64-x86_64-with-glibc2.31
+                program: /scratch/nd3032/nyu-llm-reasoners-a2/student/benchmarking_script.py
+                python: CPython 3.11.14
+                root: /scratch/nd3032/nyu-llm-reasoners-a2
+                slurm:
+                    cluster_name: (null)
+                    conf: /opt/slurm/data/slurmd/conf-cache/slurm.conf
+                    cpus_on_node: "12"
+                    cpus_per_task: "8"
+                    gpus_on_node: "1"
+                    gtids: "0"
+                    job_account: csci_ga_3033_131-2026sp
+                    job_cpus_per_node: "12"
+                    job_end_time: "1771638581"
+                    job_gid: "4665757"
+                    job_gpus: "0"
+                    job_group: nd3032
+                    job_id: "138880"
+                    job_name: desc
+                    job_nodelist: b-19-50
+                    job_num_nodes: "1"
+                    job_partition: c12m85-a100-1
+                    job_qos: normal
+                    job_start_time: "1771552181"
+                    job_uid: "4665757"
+                    job_user: nd3032
+                    jobid: "138880"
+                    launch_node_ipaddr: 10.32.51.31
+                    localid: "0"
+                    mem_per_node: "65536"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: b-19-50
+                    nprocs: "1"
+                    ntasks: "1"
+                    open_mode: a
+                    prio_process: "0"
+                    procid: "0"
+                    pty_port: "57845"
+                    pty_win_col: "162"
+                    pty_win_row: "46"
+                    srun_comm_host: 10.32.51.31
+                    srun_comm_port: "57846"
+                    step_id: "0"
+                    step_launcher_port: "57846"
+                    step_nodelist: b-9-24
+                    step_num_nodes: "1"
+                    step_num_tasks: "1"
+                    step_tasks_per_node: "1"
+                    stepid: "0"
+                    submit_dir: /scratch/nd3032
+                    submit_host: b-9-24
+                    task_pid: "5244"
+                    tasks_per_node: "1"
+                    topology_addr: b-19-50
+                    topology_addr_pattern: node
+                    tres_per_task: cpu:8
+                    working_cluster: slurm-cloud:10.144.0.3:6817:9984:109
+                startedAt: "2026-02-20T01:50:07.134458Z"
+                writerId: dbm1hhnyrnaty2r2osv0mkfduef81x8l
+        m: []
+        python_version: 3.11.14
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 13
+                - 16
+            "4": 3.11.14
+            "5": 0.25.0
+            "12": 0.25.0
+            "13": linux-x86_64
+model:
+    value: transformer

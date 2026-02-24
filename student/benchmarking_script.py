@@ -61,6 +61,7 @@ def ques_b():
 
 
     for size_key in SWEEPS:
+        print("using size now", size_key)
         res = training_loop(
             d_model=SWEEPS[size_key]['d_model'],
             d_ff=SWEEPS[size_key]['d_ff'],
@@ -80,13 +81,14 @@ def ques_b():
             [size_key, mean_val_fwd, std_val_fwd, mean_val_bwd, std_val_bwd]
         )
 
-        # table_latex_string = create_latex_table(
-        #     ['Size', 'Forward Pass Mean', 'Forward Pass Standard deviation', 'Backward Pass Mean',
-        #      'Backward Pass Standard deviation'],
-        #     table_val
-        # )
+        table_latex_string = create_latex_table(
+             ['Size', 'Forward Pass Mean', 'Forward Pass Standard deviation', 'Backward Pass Mean',
+              'Backward Pass Standard deviation'],
+             table_val
+         )
 
         print("partial", table_val)
+        print(table_latex_string)
 
     print("COMPLETE RESULT:")
     table_latex_string = create_latex_table(
@@ -107,7 +109,7 @@ def ques_c():
         }
     )
 
-    warmup_vals = [0, 1, 2]
+    warmup_vals = [2]
     for warmup_val in warmup_vals:
         time_measure_params = {
             "warmup_count": warmup_val,
@@ -133,8 +135,15 @@ def ques_c():
             table_val.append(
                 [size_key, mean_val_fwd, std_val_fwd, mean_val_bwd, std_val_bwd]
             )
-
+            
+            print("WARMUP VAL", warmup_val)
             print("partial", table_val)
+            table_latex_string = create_latex_table(
+            ['Size', 'Forward Pass Mean', 'Forward Pass Standard deviation', 'Backward Pass Mean',
+             'Backward Pass Standard deviation'],
+            table_val
+        )
+            print(table_latex_string)
 
         print("COMPLETE RESULT: WARM UP", warmup_val)
         table_latex_string = create_latex_table(
