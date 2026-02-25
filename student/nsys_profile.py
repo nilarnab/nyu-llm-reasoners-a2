@@ -2,7 +2,7 @@ import argparse
 import os
 
 from student.defaults import MACHINE
-from student.measurable_training_loop import training_loop
+from student.measurable_training_loop import training_loop, eval_timing_loop
 import numpy as np
 from student.utils import create_latex_table
 import wandb
@@ -46,11 +46,11 @@ SWEEPS = {
 }
 
 
-def run_tests(size_key, context_size):
+def run_tests(size_key, context_size, eval_mode=False):
     print(f"RUNNING SIZE {size_key}, CONTEXT_SIZE: {context_size}")
     wandb.init(
         project=f"assignment-2-{MACHINE}",
-        name=f"nsys_profiling",
+        name=f"nsys_profiling-evalonly",
         config={
             "model": "transformer",
         }
@@ -61,14 +61,26 @@ def run_tests(size_key, context_size):
         "measure_for_count": 10
     }
 
-    res = training_loop(
-            d_model=SWEEPS[size_key]['d_model'],
-            d_ff=SWEEPS[size_key]['d_ff'],
-            num_layers=SWEEPS[size_key]['num_layers'],
-            num_heads=SWEEPS[size_key]['num_heads'],
-            context_length=int(context_size),
-            time_measure_params=time_measure_params
-        )
+    if not eval_mode:
+        print("RUNNING IN TRAINING MODE")
+        res = training_loop(
+                d_model=SWEEPS[size_key]['d_model'],
+                d_ff=SWEEPS[size_key]['d_ff'],
+                num_layers=SWEEPS[size_key]['num_layers'],
+                num_heads=SWEEPS[size_key]['num_heads'],
+                context_length=int(context_size),
+                time_measure_params=time_measure_params
+            )
+    else:
+        print("RUNNING IN EVAL MODE")
+        res = eval_timing_loop(
+                d_model=SWEEPS[size_key]['d_model'],
+                d_ff=SWEEPS[size_key]['d_ff'],
+                num_layers=SWEEPS[size_key]['num_layers'],
+                num_heads=SWEEPS[size_key]['num_heads'],
+                context_length=int(context_size),
+                time_measure_params=time_measure_params
+            )
 
     print("result, not used", res)
 
@@ -78,7 +90,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_size', type=str, required=True)
     parser.add_argument('--context_size', type=int, required=True)
+    parser.add_argument('--eval_mode', type=str, default="FALSE")
+
+
+
 
     args = parser.parse_args()
 
-    run_tests(args.model_size, args.context_size)
+    run_tests(args.model_size, args.context_size, eval_mode=(args.eval_mode == 'TRUE'))

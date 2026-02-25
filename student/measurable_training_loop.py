@@ -29,6 +29,94 @@ def get_random_data(batch_size, context_length, vocab_size=VOCAB_SIZE, device=DE
     return input_data, target_data
 
 
+def eval_timing_loop(
+vocab_size=VOCAB_SIZE,
+    context_length=CONTEXT_LENGTH,
+    batch_size=BATCH_SIZE,
+    d_model=D_MODEL,
+    num_layers=NUM_BLOCKS,
+    num_heads=NUM_HEADS,
+    d_ff=D_FF,
+    rope_theta=ROPE_THETA,
+    device=DEVICE,
+    time_measure_params=None,
+    generate_data_randomly=True,
+    train_data=None
+):
+    print("EVAL TIMING LOOP WITH:")
+    print("vocab size", vocab_size, "context length", context_length)
+
+    if time_measure_params is None:
+        time_measure_params = {
+            "warmup_count": WARMUP_COUNT_BEFORE_TIME,
+            "measure_for_count": MEASURE_FOR_COUNT
+        }
+
+    if not generate_data_randomly:
+        if train_data is None:
+            raise Exception("Generate randomly is false, so train data cannot be None")
+
+    if device == "cuda":
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision('high')
+
+    model = basic_model.BasicsTransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta
+    )
+
+    model.to(device)
+    model.eval()
+    print("model initialized in eval mode")
+
+    res = defaultdict(lambda: [])
+
+    # WARMUP PHASE
+    with nvtx.range("WARM_UP"):
+        with torch.no_grad():
+            for it_id in range(time_measure_params['warmup_count']):
+                print("warmup it_id", it_id)
+                if generate_data_randomly:
+                    input_tensor, target_tensor = get_random_data(
+                        batch_size=batch_size, context_length=context_length, device=device
+                    )
+                else:
+                    input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
+
+                logits = model(input_tensor)
+                conditionally_torch_sync(device)
+
+    with torch.no_grad():
+        for it_id in range(time_measure_params['measure_for_count']):
+            print("measuring it_id", it_id)
+
+            if generate_data_randomly:
+                input_tensor, target_tensor = get_random_data(
+                    batch_size=batch_size, context_length=context_length, device=device
+                )
+            else:
+                input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
+
+            forward_start_time = timeit.default_timer()
+            with nvtx.range("FORWARD_PASS"):
+                logits = model(input_tensor)
+
+            conditionally_torch_sync(device)
+            res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
+
+            loss = basic_nn_utils.cross_entropy(logits, target_tensor)
+
+
+    return res
+
+
 def training_loop(max_learning_rate=MAX_LEARNING_RATE,
                        min_learning_rate= MIN_LEARNING_RATE,
                         vocab_size = VOCAB_SIZE,
