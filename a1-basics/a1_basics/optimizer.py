@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import math
 from collections.abc import Callable, Iterable
 
@@ -26,6 +28,52 @@ def get_cosine_lr(
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
     return min_learning_rate + coeff * (max_learning_rate - min_learning_rate)
 
+
+class AdamWHomeGrown(torch.optim.Optimizer):
+    def __init__(self,
+                 params: Iterable[torch.nn.parameter.Parameter],
+        lr: float = 1e-3,
+        betas: tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-8,
+        weight_decay: float = 0.01,):
+        defaults = {"lr": lr, "b1": betas[0], "b2": betas[1], "lmbda": weight_decay, "eps": eps}
+        super().__init__(params, defaults)
+
+    def step(self, closure: Optional[Callable] = None):
+        loss = None if closure is None else closure()
+        for group in self.param_groups:
+            lr = group["lr"]
+            b1 = group["b1"]
+            b2 = group["b2"]
+            lmbda = group["lmbda"]
+
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                state = self.state[p]  # Get state associated with p.
+                t = state.get("t", 1)  # Get iteration number from the state, or initial value.
+
+                grad = p.grad.data
+
+                if len(state) == 0:
+                    state["t"] = 1
+                    state["m"] = torch.zeros_like(p.data)
+                    state["v"] = torch.zeros_like(p.data)
+
+                state["m"] = b1 * state["m"] + (1 - b1) * grad
+                state["v"] = b2 * state["v"] + (1 - b2) * (grad ** 2)
+
+                lr_new = lr * ((1 - b2 ** t) ** 0.5) / (1 - b1 ** t)
+
+                p.data -= lr_new * (state["m"]/ (torch.sqrt(state["v"]) + group["eps"]))
+                p.data -= lr * lmbda * p.data
+
+                state["lr"] = lr_new
+                state["t"] += 1
+
+                self.state[p] = state
+
+        return loss
 
 class AdamW(torch.optim.Optimizer):
     def __init__(

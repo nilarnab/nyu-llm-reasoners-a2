@@ -95,23 +95,24 @@ vocab_size=VOCAB_SIZE,
 
     with torch.no_grad():
         for it_id in range(time_measure_params['measure_for_count']):
-            print("measuring it_id", it_id)
+            with nvtx.range("FULL_EVAL_RUN"):
+                # print("measuring it_id", it_id)
 
-            if generate_data_randomly:
-                input_tensor, target_tensor = get_random_data(
-                    batch_size=batch_size, context_length=context_length, device=device
-                )
-            else:
-                input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
+                if generate_data_randomly:
+                    input_tensor, target_tensor = get_random_data(
+                        batch_size=batch_size, context_length=context_length, device=device
+                    )
+                else:
+                    input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
 
-            forward_start_time = timeit.default_timer()
-            with nvtx.range("FORWARD_PASS"):
-                logits = model(input_tensor)
+                forward_start_time = timeit.default_timer()
+                with nvtx.range("FORWARD_PASS"):
+                    logits = model(input_tensor)
 
-            conditionally_torch_sync(device)
-            res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
+                conditionally_torch_sync(device)
+                res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
 
-            loss = basic_nn_utils.cross_entropy(logits, target_tensor)
+                loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
 
     return res
@@ -130,7 +131,8 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
                         device = DEVICE,
                   time_measure_params=None,
                   generate_data_randomly=True,
-                  train_data=None
+                  train_data=None,
+                  use_homegrown_adam=False,
                        ):
     print("TRINING LOOP WITH:")
     print("vocab size", vocab_size, "context length", context_length)
@@ -165,12 +167,22 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 #   model = torch.compile(model)
     print("model initialized")
 
-    optimizer = basic_optimizer.AdamW(
-        model.parameters(),
-        lr= min_learning_rate,
-        betas = BETAS,
-        weight_decay = WEIGHT_DECAY
-    )
+    if not use_homegrown_adam:
+        optimizer = basic_optimizer.AdamW(
+            model.parameters(),
+            lr= min_learning_rate,
+            betas = BETAS,
+            weight_decay = WEIGHT_DECAY
+        )
+        print("given adam")
+    else:
+        optimizer = basic_optimizer.AdamWHomeGrown(
+            model.parameters(),
+            lr=min_learning_rate,
+            betas=BETAS,
+            weight_decay=WEIGHT_DECAY
+        )
+        print("homegrown adam")
     print("optimizer ready")
 
     it_start = 0
@@ -218,54 +230,54 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
             optimizer.step()
 
     for it_id in range(time_measure_params['measure_for_count']):
+        with nvtx.range("FULL_TRAIN_RUN"):
+            # print("it_id", it_id, "Counting time")
+            current_lr = basic_optimizer.get_cosine_lr(
+                it=it_id,
+                max_learning_rate=max_learning_rate,
+                min_learning_rate=min_learning_rate,
+                warmup_iters=WARMUP_ITERS,
+                cosine_cycle_iters=ITERATIONS,
+            )
 
-        print("it_id", it_id, "Counting time")
-        current_lr = basic_optimizer.get_cosine_lr(
-            it=it_id,
-            max_learning_rate=max_learning_rate,
-            min_learning_rate=min_learning_rate,
-            warmup_iters=WARMUP_ITERS,
-            cosine_cycle_iters=ITERATIONS,
-        )
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = current_lr
 
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = current_lr
+            # wandb.log({
+            #     "learning_rate": float(current_lr)
+            # }, step=it_id)
 
-        # wandb.log({
-        #     "learning_rate": float(current_lr)
-        # }, step=it_id)
+            # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            if generate_data_randomly:
+                input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
+                                                              device=device)
+            else:
+                input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
 
-        # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
-        if generate_data_randomly:
-            input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
-                                                          device=device)
-        else:
-            input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            optimizer.zero_grad()
 
-        optimizer.zero_grad()
+            forward_start_time = timeit.default_timer()
+            with nvtx.range("FORWARD_PASS"):
+                logits = model(input_tensor)
 
-        forward_start_time = timeit.default_timer()
-        with nvtx.range("FORWARD_PASS"):
-            logits = model(input_tensor)
+            conditionally_torch_sync(device)
+            res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
 
-        conditionally_torch_sync(device)
-        res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
+            loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
-        loss = basic_nn_utils.cross_entropy(logits, target_tensor)
+            backward_start_time = timeit.default_timer()
+            with nvtx.range("BACKWARD_PASS"):
+                loss.backward()
 
-        backward_start_time = timeit.default_timer()
-        with nvtx.range("BACKWARD_PASS"):
-            loss.backward()
+            conditionally_torch_sync(device)
+            res['BACKWARD_PASS_TIME'].append(timeit.default_timer() - backward_start_time)
 
-        conditionally_torch_sync(device)
-        res['BACKWARD_PASS_TIME'].append(timeit.default_timer() - backward_start_time)
+            basic_nn_utils.clip_gradient(
+                model.parameters(), max_norm=1.0
+            )
 
-        basic_nn_utils.clip_gradient(
-            model.parameters(), max_norm=1.0
-        )
-
-        with nvtx.range("OPTIMIZER_STEP"):
-            optimizer.step()
+            with nvtx.range("OPTIMIZER_STEP"):
+                optimizer.step()
 
     return res
 

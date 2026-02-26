@@ -46,7 +46,7 @@ SWEEPS = {
 }
 
 
-def run_tests(size_key, context_size, eval_mode=False):
+def run_tests(size_key, context_size, eval_mode=False, use_home_adam=False):
     print(f"RUNNING SIZE {size_key}, CONTEXT_SIZE: {context_size}")
     wandb.init(
         project=f"assignment-2-{MACHINE}",
@@ -69,7 +69,8 @@ def run_tests(size_key, context_size, eval_mode=False):
                 num_layers=SWEEPS[size_key]['num_layers'],
                 num_heads=SWEEPS[size_key]['num_heads'],
                 context_length=int(context_size),
-                time_measure_params=time_measure_params
+                time_measure_params=time_measure_params,
+                use_homegrown_adam=use_home_adam
             )
     else:
         print("RUNNING IN EVAL MODE")
@@ -91,10 +92,12 @@ if __name__ == '__main__':
     parser.add_argument('--model_size', type=str, required=True)
     parser.add_argument('--context_size', type=int, required=True)
     parser.add_argument('--eval_mode', type=str, default="FALSE")
+    parser.add_argument('--use_home_adam', type=str, default="FALSE")
 
 
 
 
     args = parser.parse_args()
 
-    run_tests(args.model_size, args.context_size, eval_mode=(args.eval_mode == 'TRUE'))
+    run_tests(args.model_size, args.context_size, eval_mode=(args.eval_mode == 'TRUE'),
+              use_home_adam=(args.use_home_adam == 'TRUE'))
