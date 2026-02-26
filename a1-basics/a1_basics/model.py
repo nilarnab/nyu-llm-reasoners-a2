@@ -11,10 +11,12 @@ import einx
 import torch
 import torch.nn as nn
 from torch import Tensor
+import torch.cuda.nvtx as nvtx
 from jaxtyping import Float, Bool, Int
 
 
 from .nn_utils import softmax
+
 
 logger = logging.getLogger(__name__)
 
@@ -422,14 +424,20 @@ def scaled_dot_product_attention(
     """
 
     d_k = K.shape[-1]
-    attention_scores = einsum(Q, K, "... query d_k, ... key d_k -> ... query key") / math.sqrt(d_k)
+
+    with nvtx.range("ATTENTION_QK_MULT"):
+        attention_scores = einsum(Q, K, "... query d_k, ... key d_k -> ... query key") / math.sqrt(d_k)
 
     if mask is not None:
         attention_scores = torch.where(mask, attention_scores, float("-inf"))
 
-    attention_weights = softmax(attention_scores, dim=-1)  # Softmax over the key dimension
+    with nvtx.range("ATTENTION_SOFTMAX"):
+        attention_weights = softmax(attention_scores, dim=-1)  # Softmax over the key dimension
 
-    return einsum(attention_weights, V, "... query key, ... key d_v ->  ... query d_v")
+    with nvtx.range("ATTENTION_V_MULT"):
+        res = einsum(attention_weights, V, "... query key, ... key d_v ->  ... query d_v")
+
+    return res
 
 
 class CausalMultiHeadSelfAttention(nn.Module):
