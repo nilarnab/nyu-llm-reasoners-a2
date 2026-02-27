@@ -6,6 +6,7 @@ from student.measurable_training_loop import training_loop, eval_timing_loop
 import numpy as np
 from student.utils import create_latex_table
 import wandb
+from contextlib import nullcontext
 
 
 os.environ["WANDB_API_KEY"] = "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"
@@ -46,7 +47,12 @@ SWEEPS = {
 }
 
 
-def run_tests(size_key, context_size, eval_mode=False, use_home_adam=False):
+def run_tests(
+        size_key,
+        context_size,
+        eval_mode=False,
+        use_home_adam=False,
+        use_mixed_precision = True):
     print(f"RUNNING SIZE {size_key}, CONTEXT_SIZE: {context_size}")
     wandb.init(
         project=f"assignment-2-{MACHINE}",
@@ -70,7 +76,8 @@ def run_tests(size_key, context_size, eval_mode=False, use_home_adam=False):
                 num_heads=SWEEPS[size_key]['num_heads'],
                 context_length=int(context_size),
                 time_measure_params=time_measure_params,
-                use_homegrown_adam=use_home_adam
+                use_homegrown_adam=use_home_adam,
+                use_mixed_precision= use_mixed_precision
             )
     else:
         print("RUNNING IN EVAL MODE")
@@ -80,7 +87,8 @@ def run_tests(size_key, context_size, eval_mode=False, use_home_adam=False):
                 num_layers=SWEEPS[size_key]['num_layers'],
                 num_heads=SWEEPS[size_key]['num_heads'],
                 context_length=int(context_size),
-                time_measure_params=time_measure_params
+                time_measure_params=time_measure_params,
+                use_mixed_precision=use_mixed_precision,
             )
 
     print("result, not used", res)
@@ -93,11 +101,15 @@ if __name__ == '__main__':
     parser.add_argument('--context_size', type=int, required=True)
     parser.add_argument('--eval_mode', type=str, default="FALSE")
     parser.add_argument('--use_home_adam', type=str, default="FALSE")
+    parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
 
 
 
 
     args = parser.parse_args()
 
-    run_tests(args.model_size, args.context_size, eval_mode=(args.eval_mode == 'TRUE'),
-              use_home_adam=(args.use_home_adam == 'TRUE'))
+    run_tests(args.model_size,
+              args.context_size,
+              eval_mode=(args.eval_mode == 'TRUE'),
+              use_home_adam=(args.use_home_adam == 'TRUE'),
+              use_mixed_precision=(args.use_mixed_precision == "TRUE"))

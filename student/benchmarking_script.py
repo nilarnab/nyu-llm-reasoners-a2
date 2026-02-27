@@ -1,3 +1,4 @@
+import argparse
 import os
 
 from student.defaults import MACHINE
@@ -42,7 +43,7 @@ SWEEPS = {
     },
 }
 
-def ques_b():
+def ques_b(use_mixed_precision=True):
     wandb.init(
         project=f"assignment-2-{MACHINE}",
         name=f"benchmarking_script_ques_b",
@@ -67,7 +68,8 @@ def ques_b():
             d_ff=SWEEPS[size_key]['d_ff'],
             num_layers=SWEEPS[size_key]['num_layers'],
             num_heads=SWEEPS[size_key]['num_heads'],
-            time_measure_params=time_measure_params
+            time_measure_params=time_measure_params,
+            use_mixed_precision=use_mixed_precision
         )
 
         print("SIZE", size_key, "RES", res)
@@ -157,4 +159,13 @@ def ques_c():
 
 
 if __name__ == '__main__':
-    ques_b()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_size', type=str, required=True)
+    parser.add_argument('--context_size', type=int, required=True)
+    parser.add_argument('--eval_mode', type=str, default="FALSE")
+    parser.add_argument('--use_home_adam', type=str, default="FALSE")
+    parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
+
+    args = parser.parse_args()
+
+    ques_b(use_mixed_precision=(args.use_mixed_precision == "TRUE"))
