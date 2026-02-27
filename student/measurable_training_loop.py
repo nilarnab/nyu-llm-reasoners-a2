@@ -150,10 +150,15 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
             raise Exception("Generate randomly is false, so train data cannot be None")
 
     if device == "cuda":
-        torch.backends.cudnn.benchmark = True
-        torch.backends.cuda.matmul.allow_tf32 = True
-        torch.backends.cudnn.allow_tf32 = True
-        torch.set_float32_matmul_precision('high')
+        # torch.backends.cudnn.benchmark = True
+        # torch.backends.cuda.matmul.allow_tf32 = True
+        # torch.backends.cudnn.allow_tf32 = True
+        # torch.set_float32_matmul_precision('high')
+        print("DISABLING TF32 CONVERSION")
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        torch.set_float32_matmul_precision('highest')
+
 
     if use_mixed_precision:
         print("USING MIXED PRECISION")
