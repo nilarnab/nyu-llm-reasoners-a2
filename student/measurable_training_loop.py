@@ -231,12 +231,12 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
                 loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
-                loss.backward()
-                basic_nn_utils.clip_gradient(
+            loss.backward()
+            basic_nn_utils.clip_gradient(
                     model.parameters(), max_norm=1.0
                 )
 
-                optimizer.step()
+            optimizer.step()
 
     with autocast_context:
         for it_id in range(time_measure_params['measure_for_count']):
@@ -275,19 +275,19 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
                 loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
-                backward_start_time = timeit.default_timer()
-                with nvtx.range("BACKWARD_PASS"):
-                    loss.backward()
+            backward_start_time = timeit.default_timer()
+            with nvtx.range("BACKWARD_PASS"):
+                loss.backward()
 
-                conditionally_torch_sync(device)
-                res['BACKWARD_PASS_TIME'].append(timeit.default_timer() - backward_start_time)
+            conditionally_torch_sync(device)
+            res['BACKWARD_PASS_TIME'].append(timeit.default_timer() - backward_start_time)
 
-                basic_nn_utils.clip_gradient(
-                    model.parameters(), max_norm=1.0
-                )
+            basic_nn_utils.clip_gradient(
+                model.parameters(), max_norm=1.0
+            )
 
-                with nvtx.range("OPTIMIZER_STEP"):
-                    optimizer.step()
+            with nvtx.range("OPTIMIZER_STEP"):
+                optimizer.step()
 
     return res
 
