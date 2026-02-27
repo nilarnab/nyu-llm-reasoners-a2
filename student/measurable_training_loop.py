@@ -198,74 +198,75 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
     res = defaultdict(lambda: [])
 
     ## WARMUP PHASE
-    with autocast_context:
-        with nvtx.range("WARM_UP"):
-            for it_id in range(it_start, time_measure_params['warmup_count']):
-                print("it_id", it_id)
-                current_lr = basic_optimizer.get_cosine_lr(
-                    it=it_id,
-                    max_learning_rate=max_learning_rate,
-                    min_learning_rate=min_learning_rate,
-                    warmup_iters=WARMUP_ITERS,
-                    cosine_cycle_iters=ITERATIONS,
-                )
+    with nvtx.range("WARM_UP"):
+        for it_id in range(it_start, time_measure_params['warmup_count']):
+            print("it_id", it_id)
+            current_lr = basic_optimizer.get_cosine_lr(
+                it=it_id,
+                max_learning_rate=max_learning_rate,
+                min_learning_rate=min_learning_rate,
+                warmup_iters=WARMUP_ITERS,
+                cosine_cycle_iters=ITERATIONS,
+            )
 
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = current_lr
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = current_lr
 
-                # wandb.log({
-                #     "learning_rate": float(current_lr)
-                # }, step=it_id)
+            # wandb.log({
+            #     "learning_rate": float(current_lr)
+            # }, step=it_id)
 
-                # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
-                if generate_data_randomly:
-                    input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
+            # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            if generate_data_randomly:
+                input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
                                                               device=device)
-                else:
-                    input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            else:
+                input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
 
+            optimizer.zero_grad()
 
-                optimizer.zero_grad()
-
+            with autocast_context:
                 logits = model(input_tensor)
 
                 loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
             loss.backward()
             basic_nn_utils.clip_gradient(
-                    model.parameters(), max_norm=1.0
-                )
+                model.parameters(), max_norm=1.0
+            )
 
             optimizer.step()
 
-    with autocast_context:
-        for it_id in range(time_measure_params['measure_for_count']):
-            with nvtx.range("FULL_TRAIN_RUN"):
-                # print("it_id", it_id, "Counting time")
-                current_lr = basic_optimizer.get_cosine_lr(
-                    it=it_id,
-                    max_learning_rate=max_learning_rate,
-                    min_learning_rate=min_learning_rate,
-                    warmup_iters=WARMUP_ITERS,
-                    cosine_cycle_iters=ITERATIONS,
-                )
 
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = current_lr
+    # here
+    for it_id in range(time_measure_params['measure_for_count']):
+        with nvtx.range("FULL_TRAIN_RUN"):
+            # print("it_id", it_id, "Counting time")
+            current_lr = basic_optimizer.get_cosine_lr(
+                it=it_id,
+                max_learning_rate=max_learning_rate,
+                min_learning_rate=min_learning_rate,
+                warmup_iters=WARMUP_ITERS,
+                cosine_cycle_iters=ITERATIONS,
+            )
 
-                # wandb.log({
-                #     "learning_rate": float(current_lr)
-                # }, step=it_id)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = current_lr
 
-                # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
-                if generate_data_randomly:
-                    input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
-                                                                  device=device)
-                else:
-                    input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            # wandb.log({
+            #     "learning_rate": float(current_lr)
+            # }, step=it_id)
 
-                optimizer.zero_grad()
+            # input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
+            if generate_data_randomly:
+                input_tensor, target_tensor = get_random_data(batch_size=batch_size, context_length=context_length,
+                                                              device=device)
+            else:
+                input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
 
+            optimizer.zero_grad()
+
+            with autocast_context:
                 forward_start_time = timeit.default_timer()
                 with nvtx.range("FORWARD_PASS"):
                     logits = model(input_tensor)
@@ -288,6 +289,8 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
             with nvtx.range("OPTIMIZER_STEP"):
                 optimizer.step()
+
+
 
     return res
 
