@@ -29,16 +29,16 @@ class ToyModel(nn.Module):
 
 
 if __name__ == '__main__':
-    input = torch.rand(10, 10)
-    target = torch.randint(0, 10, (10, ), dtype=torch.long)
-    model = ToyModel(input.shape[0], input.shape[1])
+    input = torch.rand(10, 10).to(DEVICE)
+    target = torch.randint(0, 10, (10, ), dtype=torch.long).to(DEVICE)
+    model = ToyModel(input.shape[1], 10).to(DEVICE)
 
     with torch.autocast(device_type=DEVICE, dtype=torch.float16):
         outp = model(input)
         RESULTS.append(["Model Output Logits", outp.dtype])
 
         loss = basic_nn_utils.cross_entropy(outp, target)
-        RESULTS.append(["Loss type", loss.type])
+        RESULTS.append(["Loss type", loss.dtype])
         loss.backward()
 
         for name, param in model.named_parameters():
