@@ -160,10 +160,6 @@ def ques_c():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_size', type=str, required=True)
-    parser.add_argument('--context_size', type=int, required=True)
-    parser.add_argument('--eval_mode', type=str, default="FALSE")
-    parser.add_argument('--use_home_adam', type=str, default="FALSE")
     parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
 
     args = parser.parse_args()
