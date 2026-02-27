@@ -33,7 +33,7 @@ if __name__ == '__main__':
     target = torch.randint(0, 10, (10, ), dtype=torch.long).to(DEVICE)
     model = ToyModel(input.shape[1], 10).to(DEVICE)
 
-    with torch.autocast(device_type=DEVICE, dtype=torch.float16):
+    with torch.autocast(device_type=DEVICE, dtype=torch.bfloat16):
         outp = model(input)
         RESULTS.append(["Model Output Logits", outp.dtype])
 
