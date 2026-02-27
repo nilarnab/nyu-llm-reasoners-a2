@@ -434,8 +434,8 @@ def scaled_dot_product_attention(
     with nvtx.range("ATTENTION_QK_MULT"):
         attention_scores = einsum(Q, K, "... query d_k, ... key d_k -> ... query key") / math.sqrt(d_k)
 
-    qk_flops = 2 * B * N * N * d_k
-    print(f"QK^T matmul FLOPs: {qk_flops}")
+    # qk_flops = 2 * B * N * N * d_k
+    # print(f"QK^T matmul FLOPs: {qk_flops}")
 
     if mask is not None:
         attention_scores = torch.where(mask, attention_scores, float("-inf"))
@@ -443,14 +443,14 @@ def scaled_dot_product_attention(
     with nvtx.range("ATTENTION_SOFTMAX"):
         attention_weights = softmax(attention_scores, dim=-1)  # Softmax over the key dimension
 
-    softmax_flops = 5 * B * N * N
-    print(f"Softmax FLOPs: {softmax_flops}")
+    # softmax_flops = 5 * B * N * N
+    # print(f"Softmax FLOPs: {softmax_flops}")
 
     with nvtx.range("ATTENTION_V_MULT"):
         res = einsum(attention_weights, V, "... query key, ... key d_v ->  ... query d_v")
 
-    av_flops = 2 * B * N * N * d_v
-    print(f"Attention×V FLOPs: {av_flops}")
+    # av_flops = 2 * B * N * N * d_v
+    # print(f"Attention×V FLOPs: {av_flops}")
 
     return res
 

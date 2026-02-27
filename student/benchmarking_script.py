@@ -165,3 +165,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ques_b(use_mixed_precision=(args.use_mixed_precision == "TRUE"))
+
+    # uv run student/benchmarking_script.py
