@@ -11,7 +11,7 @@ os.environ["WANDB_API_KEY"] = "wandb_v1_IB8s2x85etyLDxHhDjI6i3urzMh_huGmA5nZ8dlE
 wandb.login(key=os.environ["WANDB_API_KEY"])
 
 CONTEXT_LENGTHS = [128, 256, 512]
-SIZE = "xl"
+SIZE = "2.7B"
 
 def trigger_loop(
         use_mixed_precision=True,
