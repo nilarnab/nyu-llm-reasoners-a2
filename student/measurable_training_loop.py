@@ -135,10 +135,10 @@ vocab_size=VOCAB_SIZE,
                     with nvtx.range("FORWARD_PASS"):
                         logits = model(input_tensor)
 
-                conditionally_torch_sync(device)
-                res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
+                        conditionally_torch_sync(device)
+                        res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
 
-                loss = basic_nn_utils.cross_entropy(logits, target_tensor)
+                        loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
     if profile_memory and device == 'cuda':
         torch.cuda.memory._dump_snapshot(profile_memory_location)
