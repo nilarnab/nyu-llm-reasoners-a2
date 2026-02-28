@@ -111,16 +111,17 @@ vocab_size=VOCAB_SIZE,
 
                 conditionally_torch_sync(device)
 
+    if profile_memory:
+        if device == "cuda":
+            torch.cuda.memory._record_memory_history(max_entries=1000000)
+        else:
+            print("PROFILING REQUESTED BUT DEVICE WAS NOT CUDA, skipping")
+
+
     with torch.no_grad():
         for it_id in range(time_measure_params['measure_for_count']):
             with nvtx.range("FULL_EVAL_RUN"):
                 # print("measuring it_id", it_id)
-
-                if profile_memory:
-                    if device == "cuda":
-                        torch.cuda.memory._record_memory_history(max_entries=1000000)
-                    else:
-                        print("PROFILING REQUESTED BUT DEVICE WAS NOT CUDA, skipping")
 
                 if generate_data_randomly:
                     input_tensor, target_tensor = get_random_data(
@@ -139,12 +140,11 @@ vocab_size=VOCAB_SIZE,
 
                 loss = basic_nn_utils.cross_entropy(logits, target_tensor)
 
-                if profile_memory and device == 'cuda':
-                    torch.cuda.memory._dump_snapshot(profile_memory_location)
-                    torch.cuda.memory._record_memory_history(enabled=None)
+    if profile_memory and device == 'cuda':
+        torch.cuda.memory._dump_snapshot(profile_memory_location)
+        torch.cuda.memory._record_memory_history(enabled=None)
 
-                    print("PROFILING ONE STEP COMPLETE, EXITING THE LOOP")
-                    break
+        print("PROFILING COMPLETE, EXITING THE LOOP")
 
 
     return res
@@ -276,6 +276,11 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
             optimizer.step()
 
+    if profile_memory:
+        if device == "cuda":
+            torch.cuda.memory._record_memory_history(max_entries=1000000)
+        else:
+            print("PROFILING REQUESTED BUT DEVICE WAS NOT CUDA, skipping")
 
     # here
     for it_id in range(time_measure_params['measure_for_count']):
@@ -305,12 +310,6 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
             optimizer.zero_grad()
 
-            if profile_memory:
-                if device == "cuda":
-                    torch.cuda.memory._record_memory_history(max_entries=1000000)
-                else:
-                    print("PROFILING REQUESTED BUT DEVICE WAS NOT CUDA, skipping")
-
             with autocast_context:
                 forward_start_time = timeit.default_timer()
                 with nvtx.range("FORWARD_PASS"):
@@ -335,16 +334,15 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
             with nvtx.range("OPTIMIZER_STEP"):
                 optimizer.step()
 
-            if profile_memory and device == 'cuda':
-                torch.cuda.memory._dump_snapshot(profile_memory_location)
-                torch.cuda.memory._record_memory_history(enabled=None)
+    if profile_memory and device == 'cuda':
+        torch.cuda.memory._dump_snapshot(profile_memory_location)
+        torch.cuda.memory._record_memory_history(enabled=None)
 
-                print("PROFILING ONE STEP COMPLETE, EXITING THE LOOP")
-                break
-
+        print("PROFILING STEPS COMPLETE, EXITING THE LOOP")
 
 
     return res
+
 
 
 
