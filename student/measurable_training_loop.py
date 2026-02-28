@@ -68,7 +68,6 @@ vocab_size=VOCAB_SIZE,
         print("DISABLING TF32 CONVERSION")
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
-        torch.set_float32_matmul_precision('highest')
 
 
     if use_mixed_precision:
@@ -193,8 +192,6 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
         print("DISABLING TF32 CONVERSION")
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
-        torch.set_float32_matmul_precision('highest')
-
 
     if use_mixed_precision:
         print("USING MIXED PRECISION")
