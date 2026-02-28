@@ -42,7 +42,10 @@ vocab_size=VOCAB_SIZE,
     device=DEVICE,
     time_measure_params=None,
     generate_data_randomly=True,
-    train_data=None
+    train_data=None,
+        profile_memory = False,
+        profile_memory_location = "memory_profiles/default_location.pickle",
+    use_mixed_precision = True,
 ):
     print("EVAL TIMING LOOP WITH:")
     print("vocab size", vocab_size, "context length", context_length)
@@ -58,10 +61,22 @@ vocab_size=VOCAB_SIZE,
             raise Exception("Generate randomly is false, so train data cannot be None")
 
     if device == "cuda":
-        torch.backends.cudnn.benchmark = True
-        torch.backends.cuda.matmul.allow_tf32 = True
-        torch.backends.cudnn.allow_tf32 = True
-        torch.set_float32_matmul_precision('high')
+        # torch.backends.cudnn.benchmark = True
+        # torch.backends.cuda.matmul.allow_tf32 = True
+        # torch.backends.cudnn.allow_tf32 = True
+        # torch.set_float32_matmul_precision('high')
+        print("DISABLING TF32 CONVERSION")
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        torch.set_float32_matmul_precision('highest')
+
+
+    if use_mixed_precision:
+        print("USING MIXED PRECISION")
+        autocast_context = torch.autocast(device_type=device, dtype=torch.bfloat16)
+    else:
+        print("USING FIXED PRECISION")
+        autocast_context = nullcontext()
 
     model = basic_model.BasicsTransformerLM(
         vocab_size=vocab_size,
@@ -91,13 +106,21 @@ vocab_size=VOCAB_SIZE,
                 else:
                     input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
 
-                logits = model(input_tensor)
+                with autocast_context:
+                    logits = model(input_tensor)
+
                 conditionally_torch_sync(device)
 
     with torch.no_grad():
         for it_id in range(time_measure_params['measure_for_count']):
             with nvtx.range("FULL_EVAL_RUN"):
                 # print("measuring it_id", it_id)
+
+                if profile_memory:
+                    if device == "cuda":
+                        torch.cuda.memory._record_memory_history(max_entries=1000000)
+                    else:
+                        print("PROFILING REQUESTED BUT DEVICE WAS NOT CUDA, skipping")
 
                 if generate_data_randomly:
                     input_tensor, target_tensor = get_random_data(
@@ -107,13 +130,21 @@ vocab_size=VOCAB_SIZE,
                     input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
 
                 forward_start_time = timeit.default_timer()
-                with nvtx.range("FORWARD_PASS"):
-                    logits = model(input_tensor)
+                with autocast_context:
+                    with nvtx.range("FORWARD_PASS"):
+                        logits = model(input_tensor)
 
                 conditionally_torch_sync(device)
                 res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
 
                 loss = basic_nn_utils.cross_entropy(logits, target_tensor)
+
+                if profile_memory and device == 'cuda':
+                    torch.cuda.memory._dump_snapshot(profile_memory_location)
+                    torch.cuda.memory._record_memory_history(enabled=None)
+
+                    print("PROFILING ONE STEP COMPLETE, EXITING THE LOOP")
+                    break
 
 
     return res
@@ -135,6 +166,8 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
                   train_data=None,
                   use_homegrown_adam=False,
                     use_mixed_precision = True,
+        profile_memory = False,
+        profile_memory_location = "memory_profiles/default_location.pickle"
                        ):
     print("TRINING LOOP WITH:")
     print("vocab size", vocab_size, "context length", context_length)
@@ -164,6 +197,7 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
         print("USING MIXED PRECISION")
         autocast_context = torch.autocast(device_type=device, dtype=torch.bfloat16)
     else:
+        print("USING FIXED PRECISION")
         autocast_context = nullcontext()
 
     model = basic_model.BasicsTransformerLM(
@@ -271,6 +305,12 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
             optimizer.zero_grad()
 
+            if profile_memory:
+                if device == "cuda":
+                    torch.cuda.memory._record_memory_history(max_entries=1000000)
+                else:
+                    print("PROFILING REQUESTED BUT DEVICE WAS NOT CUDA, skipping")
+
             with autocast_context:
                 forward_start_time = timeit.default_timer()
                 with nvtx.range("FORWARD_PASS"):
@@ -294,6 +334,13 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
 
             with nvtx.range("OPTIMIZER_STEP"):
                 optimizer.step()
+
+            if profile_memory and device == 'cuda':
+                torch.cuda.memory._dump_snapshot(profile_memory_location)
+                torch.cuda.memory._record_memory_history(enabled=None)
+
+                print("PROFILING ONE STEP COMPLETE, EXITING THE LOOP")
+                break
 
 
 
