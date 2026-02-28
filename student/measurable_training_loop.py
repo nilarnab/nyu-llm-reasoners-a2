@@ -130,6 +130,9 @@ vocab_size=VOCAB_SIZE,
                 else:
                     input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
 
+                autocast_context = torch.autocast(device_type=device, dtype=torch.bfloat16) \
+                    if use_mixed_precision else nullcontext()
+
                 forward_start_time = timeit.default_timer()
                 with autocast_context:
                     with nvtx.range("FORWARD_PASS"):
@@ -309,6 +312,9 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
                 input_tensor, target_tensor = data_loader(train_data, BATCH_SIZE, CONTEXT_LENGTH, DEVICE)
 
             optimizer.zero_grad()
+
+            autocast_context = torch.autocast(device_type=device, dtype=torch.bfloat16) \
+                if use_mixed_precision else nullcontext()
 
             with autocast_context:
                 forward_start_time = timeit.default_timer()
