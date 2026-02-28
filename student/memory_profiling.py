@@ -49,8 +49,9 @@ def trigger_loop(
                 num_layers=SWEEPS[size_key]['num_layers'],
                 num_heads=SWEEPS[size_key]['num_heads'],
                 use_mixed_precision=use_mixed_precision,
-                profile_memory_location=location,
-                context_length=context_length
+                context_length=context_length,
+                profile_memory=True,
+                profile_memory_location=location
             )
 
     wandb.finish()
