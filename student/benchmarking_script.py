@@ -73,11 +73,11 @@ def ques_b(use_mixed_precision=True):
         )
 
         print("SIZE", size_key, "RES", res)
-        mean_val_fwd = np.mean(res['FORWARD_PASS_TIME'])
-        std_val_fwd = np.std(res['FORWARD_PASS_TIME'], ddof=1)
+        mean_val_fwd = round(np.mean(res['FORWARD_PASS_TIME']) * 1000, 2)
+        std_val_fwd = round(np.std(res['FORWARD_PASS_TIME'], ddof=1) * 1000, 2)
 
-        mean_val_bwd = np.mean(res['BACKWARD_PASS_TIME'])
-        std_val_bwd = np.std(res['BACKWARD_PASS_TIME'], ddof=1)
+        mean_val_bwd = round(np.mean(res['BACKWARD_PASS_TIME']) * 1000, 2)
+        std_val_bwd = round(np.std(res['BACKWARD_PASS_TIME'], ddof=1), 2)
 
         table_val.append(
             [size_key, mean_val_fwd, std_val_fwd, mean_val_bwd, std_val_bwd]
@@ -160,7 +160,8 @@ def ques_c():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
+    parser.add_argument('--use_mixed_precision', type=str, default="FALSE")
+    parser.add_argument('--eval_mode', type=str, default="FALSE")
 
     args = parser.parse_args()
 

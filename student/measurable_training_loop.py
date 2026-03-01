@@ -46,6 +46,7 @@ vocab_size=VOCAB_SIZE,
         profile_memory = False,
         profile_memory_location = "memory_profiles/default_location.pickle",
     use_mixed_precision = True,
+use_compiled = True,
 ):
     print("EVAL TIMING LOOP WITH:")
     print("vocab size", vocab_size, "context length", context_length)
@@ -87,6 +88,9 @@ vocab_size=VOCAB_SIZE,
         rope_theta=rope_theta
     )
 
+    if use_compiled:
+        model = torch.compile(model)
+
     model.to(device)
     model.eval()
     print("model initialized in eval mode")
@@ -106,7 +110,9 @@ vocab_size=VOCAB_SIZE,
                     input_tensor, target_tensor = data_loader(train_data, batch_size, context_length, device)
 
                 with autocast_context:
+                    forward_time = timeit.default_timer()
                     logits = model(input_tensor)
+                    res['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_time)
 
                 conditionally_torch_sync(device)
 
@@ -169,7 +175,8 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
                   use_homegrown_adam=False,
                     use_mixed_precision = True,
         profile_memory = False,
-        profile_memory_location = "memory_profiles/default_location.pickle"
+        profile_memory_location = "memory_profiles/default_location.pickle",
+                  use_compiled=True
                        ):
     print("TRINING LOOP WITH:")
     print("vocab size", vocab_size, "context length", context_length)
@@ -209,6 +216,13 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
         d_ff=d_ff,
         rope_theta=rope_theta
     )
+
+    if use_compiled:
+        print("Using COMPILED model")
+        model = torch.compile(model)
+    else:
+        print("using unCompiled model")
+
     model.to(DEVICE)
 
 #   model = torch.compile(model)
@@ -285,6 +299,8 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
     # here
     for it_id in range(time_measure_params['measure_for_count']):
         with nvtx.range("FULL_TRAIN_RUN"):
+            train_step_start = timeit.default_timer()
+
             # print("it_id", it_id, "Counting time")
             current_lr = basic_optimizer.get_cosine_lr(
                 it=it_id,
@@ -335,7 +351,11 @@ def training_loop(max_learning_rate=MAX_LEARNING_RATE,
             )
 
             with nvtx.range("OPTIMIZER_STEP"):
+                optimizer_start_time = timeit.default_timer()
                 optimizer.step()
+                res['OPTIMIZER_TIME'].append(timeit.default_timer() - optimizer_start_time)
+
+            res['FULL_TRAIN_TIME'].append(timeit.default_timer() - train_step_start)
 
     if profile_memory and device == 'cuda':
         torch.cuda.memory._dump_snapshot(profile_memory_location)
