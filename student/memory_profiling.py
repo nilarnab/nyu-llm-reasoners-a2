@@ -65,7 +65,7 @@ def trigger_loop(
                 row.append(round(np.mean(res['FORWARD_PASS_TIME']) * 1000, 2))
             if 'BACKWARD_PASS_TIME' in res:
                 row.append(round(np.mean(res['BACKWARD_PASS_TIME']) * 1000, 2))
-            if 'OPTIMIZER_STEP' in res:
+            if 'OPTIMIZER_TIME' in res:
                 row.append(round(np.mean(res['OPTIMIZER_STEP']) * 1000, 2))
             if 'FULL_TRAIN_TIME' in res:
                 row.append(round(np.mean(res['FULL_TRAIN_TIME']) * 1000, 2))
@@ -85,7 +85,7 @@ def trigger_loop(
             print(latex_table_string)
 
 
-    if not eval_mode:
+    if eval_mode:
         headers = ['Size', 'Context Length', 'Forward Pass Mean (ms)']
     else:
         headers = ['Size', 'Context Length', 'Forward Mean (ms)', 'Backward Mean (ms)', 'Optimizer Mean (ms)', 'Full Pass (ms)']
