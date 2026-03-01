@@ -24,7 +24,7 @@ CONTEXT_LENGTHS = [256, 1024, 4096, 8192, 16384]
 WARMUP_COUNT = 10
 MEASURE_COUNT = 100
 
-def run_tests():
+def run_tests(use_compiled=False):
     wandb.init(
         project=f"assignment-2-{MACHINE}",
         name=f"benchmarking_script_ques_b",
@@ -37,6 +37,13 @@ def run_tests():
     for d_model in D_MODELS:
         for context_length in CONTEXT_LENGTHS:
 
+            if not use_compiled:
+                print("Using uncompiled sdp")
+                sdp = basic_model.scaled_dot_product_attention
+            else:
+                print("using compiled sdp")
+                sdp = torch.compile(basic_model.scaled_dot_product_attention)
+
             try:
                 Q = torch.rand(8, context_length, d_model, device=DEVICE, requires_grad=True)
                 K = torch.rand(8, context_length, d_model, device=DEVICE, requires_grad=True)
@@ -45,7 +52,7 @@ def run_tests():
                 # warmup
                 print("Warming up")
                 for it_id in range(WARMUP_COUNT):
-                    out = basic_model.scaled_dot_product_attention(Q, K, V)
+                    out = sdp(Q, K, V)
                     loss = out.sum()
                     loss.backward()
                     Q.grad = K.grad = V.grad = None
@@ -59,7 +66,7 @@ def run_tests():
                 for it_id in range(MEASURE_COUNT):
 
                     forward_start_time = timeit.default_timer()
-                    out = basic_model.scaled_dot_product_attention(Q, K, V)
+                    out = sdp(Q, K, V)
                     conditionally_torch_sync(DEVICE)
                     reporter['FORWARD_PASS_TIME'].append(timeit.default_timer() - forward_start_time)
 
@@ -112,11 +119,12 @@ def run_tests():
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
-    #
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--use_compiled', type=str, default="TRUE")
+    args = parser.parse_args()
 
-    run_tests()
+    use_compiled=(args.use_compiled == "TRUE")
+
+    run_tests(use_compiled=use_compiled)
 
     # uv run student/benchmarking_script.py
