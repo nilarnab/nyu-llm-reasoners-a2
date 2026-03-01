@@ -38,9 +38,9 @@ def run_tests():
         for context_length in CONTEXT_LENGTHS:
 
             try:
-                Q = torch.rand(BATCH_SIZE, context_length, d_model, device=DEVICE, requires_grad=True)
-                K = torch.rand(BATCH_SIZE, context_length, d_model, device=DEVICE, requires_grad=True)
-                V = torch.rand(BATCH_SIZE, context_length, d_model, device=DEVICE, requires_grad=True)
+                Q = torch.rand(8, context_length, d_model, device=DEVICE, requires_grad=True)
+                K = torch.rand(8, context_length, d_model, device=DEVICE, requires_grad=True)
+                V = torch.rand(8, context_length, d_model, device=DEVICE, requires_grad=True)
 
                 # warmup
                 print("Warming up")
