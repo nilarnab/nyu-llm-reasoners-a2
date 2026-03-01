@@ -66,7 +66,7 @@ def trigger_loop(
             if 'BACKWARD_PASS_TIME' in res:
                 row.append(round(np.mean(res['BACKWARD_PASS_TIME']) * 1000, 2))
             if 'OPTIMIZER_TIME' in res:
-                row.append(round(np.mean(res['OPTIMIZER_STEP']) * 1000, 2))
+                row.append(round(np.mean(res['OPTIMIZER_TIME']) * 1000, 2))
             if 'FULL_TRAIN_TIME' in res:
                 row.append(round(np.mean(res['FULL_TRAIN_TIME']) * 1000, 2))
 
@@ -102,7 +102,7 @@ def trigger_loop(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
+    parser.add_argument('--use_mixed_precision', type=str, default="FALSE")
     parser.add_argument('--use_compiled', type=str, default="FALSE")
     parser.add_argument('--eval_mode', type=str, default="FALSE")
     parser.add_argument('--profile_memory', type=str, default="FALSE")
