@@ -60,7 +60,7 @@ def trigger_loop(
                     use_compiled=use_compiled
                 )
 
-            row = [size_key, context_length]
+            row = [size_key]
             if 'FORWARD_PASS_TIME' in res:
                 row.append(round(np.mean(res['FORWARD_PASS_TIME']) * 1000, 2))
             if 'BACKWARD_PASS_TIME' in res:
@@ -73,10 +73,10 @@ def trigger_loop(
 
             table_val.append([el for el in row])
 
-            if not eval_mode:
-                headers = ['Size', 'Context Length', 'Forward Pass Mean (ms)']
+            if eval_mode:
+                headers = ['Size', 'Forward Pass Mean (ms)']
             else:
-                headers = ['Size', 'Context Length', 'Forward Mean (ms)', 'Backward Mean (ms)', 'Optimizer Mean (ms)',
+                headers = ['Size', 'Forward Mean (ms)', 'Backward Mean (ms)', 'Optimizer Mean (ms)',
                            'Full Pass (ms)']
 
             latex_table_string = create_latex_table(headers, table_val)
