@@ -78,9 +78,9 @@ def run_tests():
                 res.append([
                     d_model,
                     context_length,
-                    np.mean(reporter['FORWARD_PASS_TIME']),
-                    np.mean(reporter['BACKWARD_TIME']),
-                    np.mean(reporter['MEMORY_BEFORE_BACKWARD']),
+                    round(np.mean(reporter['FORWARD_PASS_TIME']) * 1000, 2),
+                    round(np.mean(reporter['BACKWARD_TIME']) * 1000, 2),
+                    round(np.mean(reporter['MEMORY_BEFORE_BACKWARD']) / (1024 ** 2), 2)
                 ])
 
                 print("PARTIAL")

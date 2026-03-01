@@ -4,7 +4,6 @@ import numpy as np
 
 def conditionally_torch_sync(device):
     if device == 'cuda':
-        print("cuda synchronize ran")
         torch.cuda.synchronize()
         return
 
