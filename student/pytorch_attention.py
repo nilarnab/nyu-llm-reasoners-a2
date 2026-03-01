@@ -93,6 +93,13 @@ def run_tests():
 
             except RuntimeError as e:
                 print("Errored out with", str(e))
+                res.append([
+                    d_model,
+                    context_length,
+                    "failed",
+                    "failed",
+                    "failed",
+                ])
 
     print("COMPLETE")
     latex_string = create_latex_table(
