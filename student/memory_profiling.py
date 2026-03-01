@@ -16,7 +16,8 @@ SIZES = ["small", "medium", "large", "xl", "2.7B"]
 def trigger_loop(
         use_mixed_precision=True,
         eval_mode = False,
-        use_compiled = False
+        use_compiled = False,
+        profile_memory = False,
 ):
     wandb.init(
         project=f"assignment-2-{MACHINE}",
@@ -41,9 +42,9 @@ def trigger_loop(
                     num_heads=SWEEPS[size_key]['num_heads'],
                     use_mixed_precision=use_mixed_precision,
                     context_length=context_length,
-                    profile_memory=False,
+                    profile_memory=profile_memory,
                     profile_memory_location=location,
-                    use_compiled=use_compiled
+                    use_compiled=use_compiled,
                 )
 
             else:
@@ -54,7 +55,7 @@ def trigger_loop(
                     num_heads=SWEEPS[size_key]['num_heads'],
                     use_mixed_precision=use_mixed_precision,
                     context_length=context_length,
-                    profile_memory=False,
+                    profile_memory=profile_memory,
                     profile_memory_location=location,
                     use_compiled=use_compiled
                 )
@@ -104,11 +105,13 @@ if __name__ == '__main__':
     parser.add_argument('--use_mixed_precision', type=str, default="TRUE")
     parser.add_argument('--use_compiled', type=str, default="FALSE")
     parser.add_argument('--eval_mode', type=str, default="FALSE")
+    parser.add_argument('--profile_memory', type=str, default="FALSE")
 
     args = parser.parse_args()
 
     trigger_loop(
         use_mixed_precision= (args.use_mixed_precision == 'TRUE'),
         eval_mode = (args.eval_mode == 'TRUE'),
-        use_compiled= (args.use_compiled == 'TRUE')
+        use_compiled= (args.use_compiled == 'TRUE'),
+        profile_memory= (args.profile_memory == 'TRUE')
     )
