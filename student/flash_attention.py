@@ -98,11 +98,30 @@ class FlashAttentionNT(torch.autograd.Function):
         L = torch.cat(L_tiles, dim=1)
         print("L shape", L.shape)
 
-        ctx.save_for_backward(L)
+        ctx.save_for_backward(Q, K, V, O, L)
+        ctx.is_causal = is_causal
 
         return O
 
 
+
     @staticmethod
-    def backward():
-        return "Nothing"
+    def backward(ctx, dO):
+        Q, K, V, O, L = ctx.saved_tensors
+        is_causal = ctx.is_casual
+
+        D = (O * dO).sum(dim=-1)
+
+        d = Q.shape[-1]
+
+        S  = Q @ rearrange(K, 'b n d -> b d n')
+        P  = torch.exp(S - L.unsqueeze(-1))
+
+        dV = rearrange(P, 'b n k -> b k n') @ dO
+        dP = dO @ rearrange(V, 'b n d -> b d n')
+        dS = P * (dP - D.unsqueeze(-1))
+
+        dQ = (dS @ K) / d ** 0.5
+        dK = (rearrange(dS, 'b n k -> b k n') @ Q) / d ** 0.5
+
+        return dQ, dK, dV, None, None, None
