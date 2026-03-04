@@ -88,6 +88,8 @@ use_compiled = True,
         rope_theta=rope_theta
     )
 
+    # change model to bf16
+
     if use_compiled:
         model = torch.compile(model)
 

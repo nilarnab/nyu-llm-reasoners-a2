@@ -46,6 +46,8 @@ def _test_flash_forward_pass(impl, device="cpu", is_causal=False):
 
     # Extract L from the saved tensors
     assert o.grad_fn.saved_tensors is not None, "No saved tensors found in the output tensor. Make sure your autograd forward is saving them using ctx.save_for_backward."
+
+    print("Test expecting shpae", q.shape[0], q.shape[1])
     maybe_ls = [t for t in o.grad_fn.saved_tensors if t.shape == (q.shape[0], q.shape[1])]
 
     assert len(maybe_ls) == 1, f"Expected one tensor of shape {q.shape[0], q.shape[1]} in saved tensors, but found {len(maybe_ls)}. The tests require you to save exactly one tensor of this shape, corresponding to the log-sum-exp of the attention scores."
