@@ -59,6 +59,7 @@ def weighted_sum_fwd(
 
     output = tl.zeros((ROWS_TILE_SIZE,), dtype=tl.float32)
 
+    print("i going to", tl.cdiv(D, D_TILE_SIZE))
     for i in range(tl.cdiv(D, D_TILE_SIZE)):
         row = tl.load(x_block_ptr, boundary_check=(0, 1), padding_option="zero")      # (ROWS_TILE_SIZE, D_TILE_SIZE)
         weight = tl.load(weight_block_ptr, boundary_check=(0,), padding_option="zero") # (D_TILE_SIZE,)
@@ -114,7 +115,6 @@ class WeightedSumFunc(torch.autograd.Function):
 if __name__ == '__main__':
     x = torch.randn(128, 64, device="cuda")
     weight = torch.randn(64, device="cuda")
-    impl = WeightedSumFunc.apply()
-    res = impl()
+    res = WeightedSumFunc.apply(x, weight)
 
     print(res)

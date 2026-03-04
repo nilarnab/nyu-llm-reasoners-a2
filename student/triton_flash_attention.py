@@ -78,19 +78,18 @@ def flash_fwd_kernel(
     )
 
     Nq = N_QUERIES
-    d = D
     Nk = N_KEYS
 
-    Tk = ceil(Nk / Q_TILE_SIZE)
+    # Tk = ceil(Nk / Q_TILE_SIZE)
 
     # TODO: not sure how boundary check works
     Q_i = tl.load(Q_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
-    mi_j = tl.full((Q_TILE_SIZE,), -1e9,)
-    l_i_j = tl.zeros((Q_TILE_SIZE,),)
-    O_i = tl.zeros((Q_TILE_SIZE, d),)
+    mi_j = tl.full((Q_TILE_SIZE,), float("-inf"), dtype=tl.float32)
+    l_i_j = tl.zeros((Q_TILE_SIZE,), dtype=tl.float32)
+    O_i = tl.zeros((Q_TILE_SIZE, D), dtype=tl.float32)
 
-    for j in range(triton.cdiv(N_KEYS, K_TILE_SIZE)):
+    for j in range(tl.cdiv(N_KEYS, K_TILE_SIZE)):
         k_j = tl.load(K_block_ptr, boundary_check=(0, 1), padding_option="zero")
         v_j = tl.load(V_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
