@@ -28,6 +28,7 @@ def flash_fwd_kernel(
         D: tl.constexpr,
         Q_TILE_SIZE: tl.constexpr,
         K_TILE_SIZE: tl.constexpr,
+        is_causal=False,
 ):
     query_tile_index = tl.program_id(0)
     batch_index = tl.program_id(1)
@@ -89,11 +90,31 @@ def flash_fwd_kernel(
     l_i_j = tl.zeros((Q_TILE_SIZE,), dtype=tl.float32)
     O_i = tl.zeros((Q_TILE_SIZE, D), dtype=tl.float32)
 
+    # creating a mask injectionnn
+    q_indices = tl.arange(0, Q_TILE_SIZE) + query_tile_index * Q_TILE_SIZE  # gona be fixed
+
     for j in range(tl.cdiv(N_KEYS, K_TILE_SIZE)):
         k_j = tl.load(K_block_ptr, boundary_check=(0, 1), padding_option="zero")
         v_j = tl.load(V_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
         S_i_j = tl.dot(Q_i, tl.trans(k_j)) * scale
+
+
+        if is_causal:
+            k_indices = tl.arange(0, K_TILE_SIZE) + j * K_TILE_SIZE
+
+            # for q1 in range(len(q_indices[:, None])):
+            #     row = []
+            #     for k1 in range(len(k_indices[None, :])):
+            #         if q_indices[:, None][q1] >= k_indices[None, :][k1]:
+            #             row.append(float('-inf'))
+            #         else:
+            #             row.append(0)
+
+
+            S_i_j = tl.where(q_indices[:, None] >= k_indices[None, :], S_i_j, float('-inf'))
+
+
         mi_j_new = tl.maximum(mi_j, tl.max(S_i_j, axis=1))
 
         # TODO: What happened here?
@@ -146,6 +167,7 @@ class FlashAttention(torch.autograd.Function):
             D=D,
             Q_TILE_SIZE=Bq,
             K_TILE_SIZE=Bk,
+            is_causal=is_causal
         )
 
         ctx.save_for_backward(q, k, v, O, L)
