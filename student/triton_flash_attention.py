@@ -12,6 +12,7 @@ import triton.language as tl
 from triton import cdiv
 
 from student.defaults import DEVICE
+from student.flash_attention import backward_torched
 
 
 @triton.jit
@@ -171,10 +172,13 @@ class FlashAttention(torch.autograd.Function):
         )
 
         ctx.save_for_backward(q, k, v, O, L)
+        ctx.is_causal = is_causal
 
         return O
 
 
     @staticmethod
-    def backward():
-        return "Nothing"
+    def backward(ctx, dO):
+        dQ, dK, dV = backward_torched(ctx, dO)
+        
+        return dQ, dK, dV, None, None, None

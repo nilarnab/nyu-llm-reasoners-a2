@@ -5,11 +5,39 @@ from math import ceil
 import torch
 from einops import rearrange
 
+def backward_torched(ctx, dO):
+    Q, K, V, O, L = ctx.saved_tensors
+    is_causal = ctx.is_causal
+
+    D = (O * dO).sum(dim=-1)
+
+    d = Q.shape[-1]
+
+    S  = Q @ rearrange(K, 'b n d -> b d n') / d ** 0.5
+    
+    if is_causal:
+        Nq, Nk = S.shape[-2], S.shape[-1]
+        q_idx = torch.arange(Nq, device=Q.device)
+        k_idx = torch.arange(Nk, device=Q.device)
+        mask = q_idx[:, None] >= k_idx[None, :] 
+        S = S.masked_fill(~mask, float("-inf"))
+
+    P  = torch.exp(S - L.unsqueeze(-1))
+
+    dV = rearrange(P, 'b n k -> b k n') @ dO
+    dP = dO @ rearrange(V, 'b n d -> b d n')
+    dS = P * (dP - D.unsqueeze(-1))
+
+    dQ = (dS @ K) / d ** 0.5
+    dK = (rearrange(dS, 'b n k -> b k n') @ Q) / d ** 0.5
+
+    return dQ, dK, dV
+
 class FlashAttentionNT(torch.autograd.Function):
     @staticmethod
     def forward(ctx, Q, K, V, is_causal=False, Bq=16, Bk=16):
-        print("Context", ctx)
-        print("Shape", Q.shape, K.shape, V.shape)
+        # print("Context", ctx)
+        # print("Shape", Q.shape, K.shape, V.shape)
 
         Nq = Q.shape[1]
         d = Q.shape[2]
@@ -45,47 +73,47 @@ class FlashAttentionNT(torch.autograd.Function):
             # mi_j = m_i_0
             # l_i_j = l_i_0
 
-            print("l_i_j mi_j original", l_i_j, "mi_j", mi_j)
+            # print("l_i_j mi_j original", l_i_j, "mi_j", mi_j)
 
             for j in range(Tk):
                 k_j = K_split[j]
                 v_j = V_split[j]
 
-                print("Q_i shape:", Q_i.shape)
-                print("K_j shape:", k_j.shape)
+                # print("Q_i shape:", Q_i.shape)
+                # print("K_j shape:", k_j.shape)
 
                 # S_i_j = torch.matmul(Q_i, k_j.transpose(-1, -2)) / d**0.5
                 S_i_j = torch.matmul(Q_i, k_j.transpose(-1, -2)) / d ** 0.5
                 S_i_j = torch.clamp(S_i_j, -1e9, 1e9)
-                print("S i j shape", S_i_j.shape)
+                # print("S i j shape", S_i_j.shape)
 
-                print("mi_j", mi_j, "S_i_j.max(dim=2).values", S_i_j.max(dim=2).values)
+                # print("mi_j", mi_j, "S_i_j.max(dim=2).values", S_i_j.max(dim=2).values)
                 mi_j_new = torch.maximum(mi_j, S_i_j.max(dim=2).values)
-                print("mi_j_new now", mi_j_new)
+                # print("mi_j_new now", mi_j_new)
 
                 P_tilde_i_j = torch.exp(S_i_j - mi_j_new.unsqueeze(-1))
 
-                print("mi_j_new", mi_j_new, "mi_j", mi_j, "l_i_j", l_i_j, "P_tilde_i_j.sum(dim=2)", P_tilde_i_j.sum(dim=2))
+                # print("mi_j_new", mi_j_new, "mi_j", mi_j, "l_i_j", l_i_j, "P_tilde_i_j.sum(dim=2)", P_tilde_i_j.sum(dim=2))
                 # l_i_j_new = torch.exp(mi_j_new - mi_j) * l_i_j + P_tilde_i_j.sum(dim=2)
                 l_i_j_new = torch.exp(mi_j - mi_j_new) * l_i_j + P_tilde_i_j.sum(dim=2)
-                print("l_i_j_new after operation", l_i_j_new)
+                # print("l_i_j_new after operation", l_i_j_new)
 
                 O_i = torch.exp(mi_j - mi_j_new).unsqueeze(-1) * O_i + P_tilde_i_j @ v_j
 
-                print("Oi", O_i)
+                # print("Oi", O_i)
 
                 mi_j = mi_j_new
                 l_i_j = l_i_j_new
 
-                print("l_i_j", l_i_j)
+                # print("l_i_j", l_i_j)
 
-            # print("l_i_j.unsqueeze(-1)", l_i_j.unsqueeze(-1))
+            # # print("l_i_j.unsqueeze(-1)", l_i_j.unsqueeze(-1))
             # O_i = O_i / l_i_j.unsqueeze(-1)
             #
-            # print("Oi changed", O_i)
+            # # print("Oi changed", O_i)
             # l_i = mi_j + torch.log(l_i_j)
 
-            # print("li", l_i)
+            # # print("li", l_i)
 
             eps = 1e-12
             O_i = O_i / (l_i_j.unsqueeze(-1) + eps)
@@ -96,7 +124,7 @@ class FlashAttentionNT(torch.autograd.Function):
 
         O = torch.cat(O_tiles, dim=1)
         L = torch.cat(L_tiles, dim=1)
-        print("L shape", L.shape)
+        # print("L shape", L.shape)
 
         ctx.save_for_backward(Q, K, V, O, L)
         ctx.is_causal = is_causal
@@ -107,21 +135,6 @@ class FlashAttentionNT(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dO):
-        Q, K, V, O, L = ctx.saved_tensors
-        is_causal = ctx.is_casual
-
-        D = (O * dO).sum(dim=-1)
-
-        d = Q.shape[-1]
-
-        S  = Q @ rearrange(K, 'b n d -> b d n')
-        P  = torch.exp(S - L.unsqueeze(-1))
-
-        dV = rearrange(P, 'b n k -> b k n') @ dO
-        dP = dO @ rearrange(V, 'b n d -> b d n')
-        dS = P * (dP - D.unsqueeze(-1))
-
-        dQ = (dS @ K) / d ** 0.5
-        dK = (rearrange(dS, 'b n k -> b k n') @ Q) / d ** 0.5
-
+        dQ, dK, dV = backward_torched(ctx, dO)
+        
         return dQ, dK, dV, None, None, None
